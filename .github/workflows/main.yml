@@ -20,7 +20,7 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      # PREVENCIÓN: Aceptar todas las licencias de Android SDK proactivamente
+      # PREVENCIÓN: Aceptar licencias de Android SDK
       - name: Accept Android SDK Licenses
         run: |
           yes | sdkmanager --licenses || true
@@ -38,8 +38,7 @@ jobs:
           arch: 'android_arm64_v8a'
           modules: 'qtconnectivity'
 
-      # PREVENCIÓN 1: Forzamos la variable interna para evitar que busque "/platforms" en escritorio
-      # PREVENCIÓN 2: Evitamos que CMake intente empaquetar el APK por su cuenta desactivando el target final automático
+      # PREVENCIÓN: Forzar variables del SDK/NDK para el compilador
       - name: Configure and Build CMake
         run: |
           export QT_ANDROID_SDK_BUILD_TOOLS_REVISION="34.0.0"
@@ -53,27 +52,29 @@ jobs:
             -DQT_ANDROID_SDK_ROOT="$ANDROID_HOME" \
             -DQT_ANDROID_NDK_ROOT="$ANDROID_NDK_ROOT" \
             -DQT_ANDROID_SDK_BUILD_TOOLS_REVISION="34.0.0" \
-            -DQT_BUILD_ALLOW_DESKTOP_TOOLS=ON \
             -DCMAKE_BUILD_TYPE=Release
             
           cmake --build build --target RobotControlPro
 
-      # PREVENCIÓN 3: Crear manualmente la estructura de carpetas si androiddeployqt la requiere vacía
       - name: Create Build Directories
         run: |
           mkdir -p build/android-build
 
-      # SOLUCIÓN DEFINITIVA: Llamamos manualmente al empaquetador correcto usando los parámetros exactos de tu proyecto
+      # SOLUCIÓN: Usamos la ruta correcta del ejecutable en 'gcc_64' y exportamos variables críticas para Gradle
       - name: Build Android APK
         run: |
-          ${{ env.QT_ROOT_DIR }}/bin/androiddeployqt \
+          export JAVA_HOME=$JAVA_HOME_17_X64
+          export ANDROID_HOME=$ANDROID_HOME
+          export ANDROID_NDK_ROOT=$ANDROID_NDK_ROOT
+          
+          /home/runner/work/controlrobot/Qt/6.7.0/gcc_64/bin/androiddeployqt \
             --input build/android-RobotControlPro-deployment-settings.json \
             --output build/android-build \
             --apk build/android-build/RobotControlPro.apk \
             --gradle \
             --release
 
-      # Guardar el APK final para que lo descargues
+      # Guardar el APK final para descargar
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
