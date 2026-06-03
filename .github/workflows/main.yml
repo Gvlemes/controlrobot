@@ -20,9 +20,11 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Accept Android SDK Licenses
+      # SOLUCIÓN Y PREVENCIÓN: Forzamos la instalación de la Plataforma Android 34 en el SDK de GitHub
+      - name: Install Android SDK Platform 34
         run: |
           yes | sdkmanager --licenses || true
+          sdkmanager "platforms;android-34" "build-tools;34.0.0"
 
       - name: Install Build Tools
         run: |
@@ -37,7 +39,7 @@ jobs:
           arch: 'android_arm64_v8a'
           modules: 'qtconnectivity'
 
-      # Configuración de CMake desactivando el despliegue automático problemático
+      # Configuración de CMake
       - name: Configure CMake
         run: |
           cmake -B build -G Ninja \
@@ -51,25 +53,25 @@ jobs:
             -DQT_ANDROID_SDK_BUILD_TOOLS_REVISION="34.0.0" \
             -DCMAKE_BUILD_TYPE=Release
 
-      # 1. Compilamos SOLAMENTE la librería C++ de tu robot (evita el fallo automático)
+      # Compilación de la librería C++
       - name: Compile C++ Binaries
         run: |
           cmake --build build --target RobotControlPro
 
-      # 2. Preparamos de forma manual las carpetas temporales y copiamos el archivo .so
+      # SOLUCIÓN: Si no tienes una carpeta 'android' con el Manifiesto en tu proyecto, la creamos vacía
+      # para que androiddeployqt no falle y genere una plantilla por defecto automáticamente.
       - name: Prepare Android Deployment Folders
         run: |
+          mkdir -p android
           mkdir -p build/android-build/libs/arm64-v8a
           cp build/libRobotControlPro_arm64-v8a.so build/android-build/libs/arm64-v8a/
 
-      # 3. Empaquetamos manualmente el APK aislando el entorno de Qt
+      # Empaquetado manual del APK
       - name: Build Android APK Manually
         run: |
           export JAVA_HOME=$JAVA_HOME_17_X64
           export ANDROID_HOME=$ANDROID_HOME
           export ANDROID_NDK_ROOT=$ANDROID_NDK_ROOT
-          
-          # Agregamos QT_HOST_PATH para forzar a androiddeployqt a ignorar el entorno de Linux local
           export QT_HOST_PATH="/home/runner/work/controlrobot/Qt/6.7.0/gcc_64"
           
           $QT_HOST_PATH/bin/androiddeployqt \
@@ -80,7 +82,7 @@ jobs:
             --gradle \
             --release
 
-      # Guardar el APK final en la sección de artefactos de GitHub Actions
+      # Guardar el APK final para descargar
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
