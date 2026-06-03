@@ -1,14 +1,15 @@
-    # 1. Instalar Qt6 para Android en el entorno de GitHub
+       # 1. Instalar Qt6 para Android con la arquitectura correcta
     - name: Install Qt
       uses: jurplel/install-qt-action@v4
       with:
-        version: '6.x.x'       # Reemplaza por tu versión exacta de Qt (ej. 6.5.3 o 6.8.0)
+        version: '6.5.3'   # Pon aquí la versión exacta de tu proyecto
         target: 'android'
-        arch: 'android_arm64_v8a'
+        arch: 'android_arm64_v8a' # Importante: coincide con los compiladores de tu error
 
-    # 2. Configurar el proyecto usando CMake (Aquí se corrige el error)
+    # 2. Configurar el proyecto usando CMake pasando la ruta de Qt explícitamente
     - name: Configure CMake
       run: |
         cmake -B build \
-          -DCMAKE_PREFIX_PATH="${{ env.Qt6_DIR }}" \
+          -DCMAKE_PREFIX_PATH="${{ env.QT_ROOT_DIR }}" \
+          -DCMAKE_FIND_ROOT_PATH="${{ env.QT_ROOT_DIR }}" \
           -DANDROID_PLATFORM=android-33
