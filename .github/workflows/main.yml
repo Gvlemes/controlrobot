@@ -1,15 +1,27 @@
-       # 1. Instalar Qt6 para Android con la arquitectura correcta
-    - name: Install Qt
+           # 1. Instalar herramientas del sistema requeridas para Android
+    - name: Install Build Tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ninja-build
+
+    # 2. Descargar Qt6 especificando los módulos de Bluetooth e IP (Red)
+    - name: Install Qt with Bluetooth & Network
       uses: jurplel/install-qt-action@v4
       with:
-        version: '6.5.3'   # Pon aquí la versión exacta de tu proyecto
+        version: '6.7.0'                 # Ajusta a tu versión de Qt actual si es otra
         target: 'android'
-        arch: 'android_arm64_v8a' # Importante: coincide con los compiladores de tu error
+        arch: 'android_arm64_v8a'
+        # IMPORTANTE: qtconnectivity activa el módulo Bluetooth
+        modules: 'qtbase qtconnectivity'
 
-    # 2. Configurar el proyecto usando CMake pasando la ruta de Qt explícitamente
-    - name: Configure CMake
+    # 3. Lanzar CMake enlazando de manera exacta el directorio de librerías cruzadas
+    - name: Configure and Build CMake
       run: |
-        cmake -B build \
-          -DCMAKE_PREFIX_PATH="${{ env.QT_ROOT_DIR }}" \
-          -DCMAKE_FIND_ROOT_PATH="${{ env.QT_ROOT_DIR }}" \
-          -DANDROID_PLATFORM=android-33
+        cmake -B build -G Ninja \
+          -DCMAKE_TOOLCHAIN_FILE="${{ env.ANDROID_NDK_LATEST_HOME }}/build/cmake/android.toolchain.cmake" \
+          -DANDROID_ABI=arm64-v8a \
+          -DANDROID_PLATFORM=android-33 \
+          -DCMAKE_PREFIX_PATH="${{ env.QT_ROOT_DIR }}/android_arm64_v8a" \
+          -DCMAKE_FIND_ROOT_PATH="${{ env.QT_ROOT_DIR }}/android_arm64_v8a"
+          
+        cmake --build build
