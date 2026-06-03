@@ -20,11 +20,11 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      # SOLUCIÓN Y PREVENCIÓN: Forzamos la instalación de la Plataforma Android 34 en el SDK de GitHub
+      # SOLUCIÓN: Usamos la ruta absoluta correcta de sdkmanager en GitHub Actions
       - name: Install Android SDK Platform 34
         run: |
-          yes | sdkmanager --licenses || true
-          sdkmanager "platforms;android-34" "build-tools;34.0.0"
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" "build-tools;34.0.0"
 
       - name: Install Build Tools
         run: |
@@ -58,8 +58,7 @@ jobs:
         run: |
           cmake --build build --target RobotControlPro
 
-      # SOLUCIÓN: Si no tienes una carpeta 'android' con el Manifiesto en tu proyecto, la creamos vacía
-      # para que androiddeployqt no falle y genere una plantilla por defecto automáticamente.
+      # Preparación de las carpetas de recursos y empaquetado básico
       - name: Prepare Android Deployment Folders
         run: |
           mkdir -p android
