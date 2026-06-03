@@ -37,11 +37,9 @@ jobs:
           arch: 'android_arm64_v8a'
           modules: 'qtconnectivity'
 
-      # SOLUCIÓN: Cambiamos a android-34 y configuramos todo el entorno nativo de Qt6
+      # Configuración de CMake desactivando el despliegue automático problemático
       - name: Configure CMake
         run: |
-          export QT_ANDROID_SDK_BUILD_TOOLS_REVISION="34.0.0"
-          
           cmake -B build -G Ninja \
             -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_ROOT/build/cmake/android.toolchain.cmake" \
             -DANDROID_ABI=arm64-v8a \
@@ -53,20 +51,39 @@ jobs:
             -DQT_ANDROID_SDK_BUILD_TOOLS_REVISION="34.0.0" \
             -DCMAKE_BUILD_TYPE=Release
 
-      # SOLUCIÓN DEFINITIVA: Usamos el target automático de Qt6 para compilar el APK directamente 
-      # Esto mueve los archivos .so automáticamente y ejecuta el empaquetador oficial sin fallar en rutas
-      - name: Build Android APK Natively
+      # 1. Compilamos SOLAMENTE la librería C++ de tu robot (evita el fallo automático)
+      - name: Compile C++ Binaries
+        run: |
+          cmake --build build --target RobotControlPro
+
+      # 2. Preparamos de forma manual las carpetas temporales y copiamos el archivo .so
+      - name: Prepare Android Deployment Folders
+        run: |
+          mkdir -p build/android-build/libs/arm64-v8a
+          cp build/libRobotControlPro_arm64-v8a.so build/android-build/libs/arm64-v8a/
+
+      # 3. Empaquetamos manualmente el APK aislando el entorno de Qt
+      - name: Build Android APK Manually
         run: |
           export JAVA_HOME=$JAVA_HOME_17_X64
           export ANDROID_HOME=$ANDROID_HOME
           export ANDROID_NDK_ROOT=$ANDROID_NDK_ROOT
           
-          cmake --build build --target apk
+          # Agregamos QT_HOST_PATH para forzar a androiddeployqt a ignorar el entorno de Linux local
+          export QT_HOST_PATH="/home/runner/work/controlrobot/Qt/6.7.0/gcc_64"
+          
+          $QT_HOST_PATH/bin/androiddeployqt \
+            --input build/android-RobotControlPro-deployment-settings.json \
+            --output build/android-build \
+            --apk build/android-build/RobotControlPro.apk \
+            --android-platform android-34 \
+            --gradle \
+            --release
 
-      # GARANTÍA DEL ARCHIVO: Buscamos el APK en todo el directorio build para empaquetarlo y dártelo
+      # Guardar el APK final en la sección de artefactos de GitHub Actions
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: RobotControlPro-APK
-          path: build/**/*.apk
+          path: build/android-build/RobotControlPro.apk
           if-no-files-found: error
