@@ -20,6 +20,11 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      # PREVENCIÓN: Aceptar todas las licencias de Android SDK proactivamente
+      - name: Accept Android SDK Licenses
+        run: |
+          yes | sdkmanager --licenses || true
+
       - name: Install Build Tools
         run: |
           sudo apt-get update
@@ -33,7 +38,8 @@ jobs:
           arch: 'android_arm64_v8a'
           modules: 'qtconnectivity'
 
-      # CORRECCIÓN: Exportamos la variable directamente al sistema para que Qt la detecte de forma nativa
+      # PREVENCIÓN 1: Forzamos la variable interna para evitar que busque "/platforms" en escritorio
+      # PREVENCIÓN 2: Evitamos que CMake intente empaquetar el APK por su cuenta desactivando el target final automático
       - name: Configure and Build CMake
         run: |
           export QT_ANDROID_SDK_BUILD_TOOLS_REVISION="34.0.0"
@@ -47,28 +53,29 @@ jobs:
             -DQT_ANDROID_SDK_ROOT="$ANDROID_HOME" \
             -DQT_ANDROID_NDK_ROOT="$ANDROID_NDK_ROOT" \
             -DQT_ANDROID_SDK_BUILD_TOOLS_REVISION="34.0.0" \
+            -DQT_BUILD_ALLOW_DESKTOP_TOOLS=ON \
             -DCMAKE_BUILD_TYPE=Release
             
-          cmake --build build
+          cmake --build build --target RobotControlPro
 
-      # Dar permisos de ejecución a Gradle internos antes de empaquetar
-      - name: Grant Gradle Permissions
+      # PREVENCIÓN 3: Crear manualmente la estructura de carpetas si androiddeployqt la requiere vacía
+      - name: Create Build Directories
         run: |
-          if [ -f "build/android-build/gradlew" ]; then chmod +x build/android-build/gradlew; fi
+          mkdir -p build/android-build
 
-      # Generar el archivo APK definitivo
+      # SOLUCIÓN DEFINITIVA: Llamamos manualmente al empaquetador correcto usando los parámetros exactos de tu proyecto
       - name: Build Android APK
         run: |
           ${{ env.QT_ROOT_DIR }}/bin/androiddeployqt \
-            --input build/android-project-deployment-settings.json \
+            --input build/android-RobotControlPro-deployment-settings.json \
             --output build/android-build \
-            --apk build/android-build/robot_app.apk \
+            --apk build/android-build/RobotControlPro.apk \
             --gradle \
             --release
 
-      # Guardar el APK final para descargar en la pestaña de Actions
+      # Guardar el APK final para que lo descargues
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Robot-App-APK
-          path: build/android-build/robot_app.apk
+          name: RobotControlPro-APK
+          path: build/android-build/RobotControlPro.apk
