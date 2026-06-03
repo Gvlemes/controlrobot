@@ -1,4 +1,4 @@
-nname: Compilar APK del Robot
+name: Compilar APK del Robot
 
 on:
   push:
