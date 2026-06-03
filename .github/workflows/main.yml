@@ -33,7 +33,7 @@ jobs:
           arch: 'android_arm64_v8a'
           modules: 'qtconnectivity'
 
-      # FIX PROACTIVO: CMake requiere estas variables globales para que qt_finalize_target funcione en Android
+      # CORRECCIÓN DEFINITIVA: Mapeamos la ruta del SDK y la versión de build-tools nativa de GitHub
       - name: Configure and Build CMake
         run: |
           cmake -B build -G Ninja \
@@ -44,11 +44,12 @@ jobs:
             -DCMAKE_FIND_ROOT_PATH="${{ env.QT_ROOT_DIR }}" \
             -DQT_ANDROID_SDK_ROOT="$ANDROID_HOME" \
             -DQT_ANDROID_NDK_ROOT="$ANDROID_NDK_ROOT" \
+            -Dandroid_sdk_build_tools_revision="34.0.0" \
             -DCMAKE_BUILD_TYPE=Release
             
           cmake --build build
 
-      # FIX PROACTIVO: Dar permisos de ejecución a Gradle internos antes de empaquetar
+      # Dar permisos de ejecución a Gradle internos antes de empaquetar
       - name: Grant Gradle Permissions
         run: |
           if [ -f "build/android-build/gradlew" ]; then chmod +x build/android-build/gradlew; fi
