@@ -38,7 +38,7 @@ jobs:
           arch: 'android_arm64_v8a'
           modules: 'qtconnectivity'
 
-      # PREVENCIÓN: Forzar variables del SDK/NDK para el compilador
+      # Compilar el código binario C++ de la app
       - name: Configure and Build CMake
         run: |
           export QT_ANDROID_SDK_BUILD_TOOLS_REVISION="34.0.0"
@@ -60,7 +60,8 @@ jobs:
         run: |
           mkdir -p build/android-build
 
-      # SOLUCIÓN: Usamos la ruta correcta del ejecutable en 'gcc_64' y exportamos variables críticas para Gradle
+      # SOLUCIÓN AL ERROR /PLATFORMS: Añadimos la bandera --android-platform apuntando al API de Android
+      # Esto evita que busque la carpeta /platforms local de Linux
       - name: Build Android APK
         run: |
           export JAVA_HOME=$JAVA_HOME_17_X64
@@ -71,12 +72,14 @@ jobs:
             --input build/android-RobotControlPro-deployment-settings.json \
             --output build/android-build \
             --apk build/android-build/RobotControlPro.apk \
+            --android-platform android-33 \
             --gradle \
             --release
 
-      # Guardar el APK final para descargar
+      # GARANTÍA DEL ARCHIVO: Buscamos cualquier APK generado en la carpeta para empaquetarlo y dártelo
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: RobotControlPro-APK
-          path: build/android-build/RobotControlPro.apk
+          path: build/android-build/outputs/apk/release/*.apk
+          if-no-files-found: warn
