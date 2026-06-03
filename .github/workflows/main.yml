@@ -38,7 +38,7 @@ jobs:
           arch: 'android_arm64_v8a'
           modules: 'qtconnectivity'
 
-      # SOLUCIÓN: Le damos a CMake la versión exacta (34.0.0) para que pase la validación del script de Qt
+      # Mantenemos las variables aquí para que CMake configure el proyecto correctamente
       - name: Configure CMake
         run: |
           cmake -B build -G Ninja \
@@ -53,19 +53,22 @@ jobs:
             -Dandroid_sdk_build_tools_revision="34.0.0" \
             -DCMAKE_BUILD_TYPE=Release
 
-      # Compilación de la librería C++ del robot
       - name: Compile C++ Binaries
         run: |
           cmake --build build --target RobotControlPro
 
-      # Preparación manual de la estructura
+      # SOLUCIÓN MAESTRA: Forzamos la creación de carpetas y usamos 'sed' para eliminar 
+      # la línea "sdk_build_tools_revision" del JSON de Qt que confunde a Gradle.
       - name: Prepare Android Deployment Folders
         run: |
           mkdir -p android
           mkdir -p build/android-build/libs/arm64-v8a
           cp build/libRobotControlPro_arm64-v8a.so build/android-build/libs/arm64-v8a/
+          
+          # Este comando limpia el parámetro conflictivo del archivo JSON generado por CMake
+          sed -i '/sdk_build_tools_revision/d' build/android-RobotControlPro-deployment-settings.json
 
-      # Empaquetado manual del APK (Aquí NO le metemos flags de revisión para evitar el fallo de Gradle)
+      # Empaquetado manual del APK con un entorno completamente limpio de variables corruptas
       - name: Build Android APK Manually
         run: |
           export JAVA_HOME=$JAVA_HOME_17_X64
