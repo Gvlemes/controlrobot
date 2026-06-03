@@ -33,9 +33,11 @@ jobs:
           arch: 'android_arm64_v8a'
           modules: 'qtconnectivity'
 
-      # CORRECCIÓN DEFINITIVA: Mapeamos la ruta del SDK y la versión de build-tools nativa de GitHub
+      # CORRECCIÓN: Exportamos la variable directamente al sistema para que Qt la detecte de forma nativa
       - name: Configure and Build CMake
         run: |
+          export QT_ANDROID_SDK_BUILD_TOOLS_REVISION="34.0.0"
+          
           cmake -B build -G Ninja \
             -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_ROOT/build/cmake/android.toolchain.cmake" \
             -DANDROID_ABI=arm64-v8a \
@@ -44,7 +46,7 @@ jobs:
             -DCMAKE_FIND_ROOT_PATH="${{ env.QT_ROOT_DIR }}" \
             -DQT_ANDROID_SDK_ROOT="$ANDROID_HOME" \
             -DQT_ANDROID_NDK_ROOT="$ANDROID_NDK_ROOT" \
-            -Dandroid_sdk_build_tools_revision="34.0.0" \
+            -DQT_ANDROID_SDK_BUILD_TOOLS_REVISION="34.0.0" \
             -DCMAKE_BUILD_TYPE=Release
             
           cmake --build build
