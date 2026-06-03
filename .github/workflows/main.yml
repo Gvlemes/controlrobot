@@ -20,7 +20,6 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      # SOLUCIÓN: Usamos la ruta absoluta correcta de sdkmanager en GitHub Actions
       - name: Install Android SDK Platform 34
         run: |
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
@@ -39,7 +38,7 @@ jobs:
           arch: 'android_arm64_v8a'
           modules: 'qtconnectivity'
 
-      # Configuración de CMake
+      # Configuración de CMake integrando las rutas limpias del SDK de Android
       - name: Configure CMake
         run: |
           cmake -B build -G Ninja \
@@ -50,22 +49,21 @@ jobs:
             -DCMAKE_FIND_ROOT_PATH="${{ env.QT_ROOT_DIR }}" \
             -DQT_ANDROID_SDK_ROOT="$ANDROID_HOME" \
             -DQT_ANDROID_NDK_ROOT="$ANDROID_NDK_ROOT" \
-            -DQT_ANDROID_SDK_BUILD_TOOLS_REVISION="34.0.0" \
             -DCMAKE_BUILD_TYPE=Release
 
-      # Compilación de la librería C++
+      # Compilación de la librería C++ del robot
       - name: Compile C++ Binaries
         run: |
           cmake --build build --target RobotControlPro
 
-      # Preparación de las carpetas de recursos y empaquetado básico
+      # Preparación manual de la estructura sin inyectar variables de revisión conflictivas
       - name: Prepare Android Deployment Folders
         run: |
           mkdir -p android
           mkdir -p build/android-build/libs/arm64-v8a
           cp build/libRobotControlPro_arm64-v8a.so build/android-build/libs/arm64-v8a/
 
-      # Empaquetado manual del APK
+      # SOLUCIÓN DEFINITIVA: Ejecutamos androiddeployqt sin forzar flags manuales de revisión para que lea el SDK nativo
       - name: Build Android APK Manually
         run: |
           export JAVA_HOME=$JAVA_HOME_17_X64
@@ -76,15 +74,14 @@ jobs:
           $QT_HOST_PATH/bin/androiddeployqt \
             --input build/android-RobotControlPro-deployment-settings.json \
             --output build/android-build \
-            --apk build/android-build/RobotControlPro.apk \
             --android-platform android-34 \
             --gradle \
             --release
 
-      # Guardar el APK final para descargar
+      # Guardar el APK final para que lo descargues en la pestaña Actions
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: RobotControlPro-APK
-          path: build/android-build/RobotControlPro.apk
+          path: build/android-build/outputs/apk/release/*.apk
           if-no-files-found: error
