@@ -62,25 +62,20 @@ jobs:
           mkdir -p build/android-build/libs/arm64-v8a
           cp build/libRobotControlPro_arm64-v8a.so build/android-build/libs/arm64-v8a/
 
-      # SOLUCIÓN MAESTRA: Parcheamos el build.gradle y COPIAMOS las licencias aceptadas al directorio del proyecto
       - name: Fix Gradle Build Tools and Licenses
         run: |
           sed -i '/sdk_build_tools_revision/d' build/android-RobotControlPro-deployment-settings.json
           
-          # Generamos archivos preliminares
           export QT_HOST_PATH="/home/runner/work/controlrobot/Qt/6.7.0/gcc_64"
           $QT_HOST_PATH/bin/androiddeployqt --input build/android-RobotControlPro-deployment-settings.json --output build/android-build --android-platform android-34 || true
           
-          # 1. Inyectamos la versión limpia de Build Tools
           if [ -f "build/android-build/build.gradle" ]; then
             sed -i 's/buildToolsVersion.*/buildToolsVersion "34.0.0"/g' build/android-build/build.gradle
           fi
           
-          # 2. Copiamos las licencias del SDK global de GitHub a la carpeta donde las exige Gradle
           mkdir -p build/android-build/licenses
           cp -r $ANDROID_HOME/licenses/* build/android-build/licenses/
 
-      # Empaquetado final del APK con licencias integradas
       - name: Build Android APK Manually
         run: |
           export JAVA_HOME=$JAVA_HOME_17_X64
@@ -95,10 +90,10 @@ jobs:
             --gradle \
             --release
 
-      # Guardar el APK final para su descarga en la pestaña Actions
+      # CORRECCIÓN DEFINITIVA: Buscamos de forma recursiva cualquier archivo .apk en toda la carpeta build
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: RobotControlPro-APK
-          path: build/android-build/outputs/apk/release/*.apk
+          path: build/**/*.apk
           if-no-files-found: error
