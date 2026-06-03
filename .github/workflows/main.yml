@@ -1,4 +1,4 @@
-name: Compilar APK del Robot
+nname: Compilar APK del Robot
 
 on:
   push:
@@ -38,7 +38,7 @@ jobs:
           arch: 'android_arm64_v8a'
           modules: 'qtconnectivity'
 
-      # Configuración de CMake integrando las rutas limpias del SDK de Android
+      # SOLUCIÓN: Le damos a CMake la versión exacta (34.0.0) para que pase la validación del script de Qt
       - name: Configure CMake
         run: |
           cmake -B build -G Ninja \
@@ -49,6 +49,8 @@ jobs:
             -DCMAKE_FIND_ROOT_PATH="${{ env.QT_ROOT_DIR }}" \
             -DQT_ANDROID_SDK_ROOT="$ANDROID_HOME" \
             -DQT_ANDROID_NDK_ROOT="$ANDROID_NDK_ROOT" \
+            -DQT_ANDROID_SDK_BUILD_TOOLS_REVISION="34.0.0" \
+            -Dandroid_sdk_build_tools_revision="34.0.0" \
             -DCMAKE_BUILD_TYPE=Release
 
       # Compilación de la librería C++ del robot
@@ -56,14 +58,14 @@ jobs:
         run: |
           cmake --build build --target RobotControlPro
 
-      # Preparación manual de la estructura sin inyectar variables de revisión conflictivas
+      # Preparación manual de la estructura
       - name: Prepare Android Deployment Folders
         run: |
           mkdir -p android
           mkdir -p build/android-build/libs/arm64-v8a
           cp build/libRobotControlPro_arm64-v8a.so build/android-build/libs/arm64-v8a/
 
-      # SOLUCIÓN DEFINITIVA: Ejecutamos androiddeployqt sin forzar flags manuales de revisión para que lea el SDK nativo
+      # Empaquetado manual del APK (Aquí NO le metemos flags de revisión para evitar el fallo de Gradle)
       - name: Build Android APK Manually
         run: |
           export JAVA_HOME=$JAVA_HOME_17_X64
