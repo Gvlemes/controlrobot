@@ -20,7 +20,6 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      # PREVENCIÓN: Aceptar licencias de Android SDK
       - name: Accept Android SDK Licenses
         run: |
           yes | sdkmanager --licenses || true
@@ -38,48 +37,36 @@ jobs:
           arch: 'android_arm64_v8a'
           modules: 'qtconnectivity'
 
-      # Compilar el código binario C++ de la app
-      - name: Configure and Build CMake
+      # SOLUCIÓN: Cambiamos a android-34 y configuramos todo el entorno nativo de Qt6
+      - name: Configure CMake
         run: |
           export QT_ANDROID_SDK_BUILD_TOOLS_REVISION="34.0.0"
           
           cmake -B build -G Ninja \
             -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_ROOT/build/cmake/android.toolchain.cmake" \
             -DANDROID_ABI=arm64-v8a \
-            -DANDROID_PLATFORM=android-33 \
+            -DANDROID_PLATFORM=android-34 \
             -DCMAKE_PREFIX_PATH="${{ env.QT_ROOT_DIR }}" \
             -DCMAKE_FIND_ROOT_PATH="${{ env.QT_ROOT_DIR }}" \
             -DQT_ANDROID_SDK_ROOT="$ANDROID_HOME" \
             -DQT_ANDROID_NDK_ROOT="$ANDROID_NDK_ROOT" \
             -DQT_ANDROID_SDK_BUILD_TOOLS_REVISION="34.0.0" \
             -DCMAKE_BUILD_TYPE=Release
-            
-          cmake --build build --target RobotControlPro
 
-      - name: Create Build Directories
-        run: |
-          mkdir -p build/android-build
-
-      # SOLUCIÓN AL ERROR /PLATFORMS: Añadimos la bandera --android-platform apuntando al API de Android
-      # Esto evita que busque la carpeta /platforms local de Linux
-      - name: Build Android APK
+      # SOLUCIÓN DEFINITIVA: Usamos el target automático de Qt6 para compilar el APK directamente 
+      # Esto mueve los archivos .so automáticamente y ejecuta el empaquetador oficial sin fallar en rutas
+      - name: Build Android APK Natively
         run: |
           export JAVA_HOME=$JAVA_HOME_17_X64
           export ANDROID_HOME=$ANDROID_HOME
           export ANDROID_NDK_ROOT=$ANDROID_NDK_ROOT
           
-          /home/runner/work/controlrobot/Qt/6.7.0/gcc_64/bin/androiddeployqt \
-            --input build/android-RobotControlPro-deployment-settings.json \
-            --output build/android-build \
-            --apk build/android-build/RobotControlPro.apk \
-            --android-platform android-33 \
-            --gradle \
-            --release
+          cmake --build build --target apk
 
-      # GARANTÍA DEL ARCHIVO: Buscamos cualquier APK generado en la carpeta para empaquetarlo y dártelo
+      # GARANTÍA DEL ARCHIVO: Buscamos el APK en todo el directorio build para empaquetarlo y dártelo
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: RobotControlPro-APK
-          path: build/android-build/outputs/apk/release/*.apk
-          if-no-files-found: warn
+          path: build/**/*.apk
+          if-no-files-found: error
