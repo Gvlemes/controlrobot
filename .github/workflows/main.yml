@@ -1,20 +1,43 @@
-           # 1. Instalar herramientas del sistema requeridas para Android
+name: Compilar APK del Robot
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. Clonar el repositorio
+    - name: Checkout Source Code
+      uses: actions/checkout@v4
+
+    # 2. Configurar Java necesario para Android
+    - name: Set up JDK
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    # 3. Instalar herramientas del sistema requeridas
     - name: Install Build Tools
       run: |
         sudo apt-get update
         sudo apt-get install -y ninja-build
 
-    # 2. Descargar Qt6 especificando los módulos de Bluetooth e IP (Red)
+    # 4. Descargar Qt6 con los módulos de Bluetooth e IP (Red)
     - name: Install Qt with Bluetooth & Network
       uses: jurplel/install-qt-action@v4
       with:
-        version: '6.7.0'                 # Ajusta a tu versión de Qt actual si es otra
+        version: '6.7.0'
         target: 'android'
         arch: 'android_arm64_v8a'
-        # IMPORTANTE: qtconnectivity activa el módulo Bluetooth
         modules: 'qtbase qtconnectivity'
 
-    # 3. Lanzar CMake enlazando de manera exacta el directorio de librerías cruzadas
+    # 5. Configurar y compilar con CMake
     - name: Configure and Build CMake
       run: |
         cmake -B build -G Ninja \
