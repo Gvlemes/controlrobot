@@ -38,7 +38,6 @@ jobs:
           arch: 'android_arm64_v8a'
           modules: 'qtconnectivity'
 
-      # Mantenemos las variables aquí para que CMake configure el proyecto correctamente
       - name: Configure CMake
         run: |
           cmake -B build -G Ninja \
@@ -57,18 +56,27 @@ jobs:
         run: |
           cmake --build build --target RobotControlPro
 
-      # SOLUCIÓN MAESTRA: Forzamos la creación de carpetas y usamos 'sed' para eliminar 
-      # la línea "sdk_build_tools_revision" del JSON de Qt que confunde a Gradle.
       - name: Prepare Android Deployment Folders
         run: |
           mkdir -p android
           mkdir -p build/android-build/libs/arm64-v8a
           cp build/libRobotControlPro_arm64-v8a.so build/android-build/libs/arm64-v8a/
-          
-          # Este comando limpia el parámetro conflictivo del archivo JSON generado por CMake
-          sed -i '/sdk_build_tools_revision/d' build/android-RobotControlPro-deployment-settings.json
 
-      # Empaquetado manual del APK con un entorno completamente limpio de variables corruptas
+      # SOLUCIÓN MAESTRA: Eliminamos las revisiones conflictivas del JSON y sobreescribimos el build.gradle autogenerado con la versión correcta antes de compilar
+      - name: Fix Gradle Build Tools Revision
+        run: |
+          sed -i '/sdk_build_tools_revision/d' build/android-RobotControlPro-deployment-settings.json
+          
+          # Primero ejecutamos un "dry-run" rápido para que androiddeployqt genere el archivo build.gradle preliminar
+          export QT_HOST_PATH="/home/runner/work/controlrobot/Qt/6.7.0/gcc_64"
+          $QT_HOST_PATH/bin/androiddeployqt --input build/android-RobotControlPro-deployment-settings.json --output build/android-build --android-platform android-34 || true
+          
+          # Inyectamos de forma forzada la versión de Build Tools correcta directamente en el archivo build.gradle que fallaba en la línea 39
+          if [ -f "build/android-build/build.gradle" ]; then
+            sed -i 's/buildToolsVersion.*/buildToolsVersion "34.0.0"/g' build/android-build/build.gradle
+          fi
+
+      # Empaquetado final del APK con los archivos corregidos
       - name: Build Android APK Manually
         run: |
           export JAVA_HOME=$JAVA_HOME_17_X64
