@@ -23,6 +23,7 @@ private slots:
     void aplicarNuevaIpVideo();
     void solicitarSiguienteFotograma();
     void cargarFotogramaEnPantalla(QNetworkReply *reply);
+    void transmitirComandoActivo(); // Nuevo método repetidor de ráfagas
 
     void moverAdelante();
     void moverAtras();
@@ -34,10 +35,10 @@ private:
     QLineEdit *txtIpVideo;
     QPushButton *btnConectarVideo;
     QLabel *lblMonitorVideo;
-
+    
     QPushButton *btnBluetooth;
     QLabel *lblFocoLed;
-
+    
     QPushButton *btnArriba;
     QPushButton *btnAbajo;
     QPushButton *btnIzquierda;
@@ -46,6 +47,9 @@ private:
     QBluetoothSocket *socketBluetooth;
     QNetworkAccessManager *managerRedVideo;
     QTimer *relojVideoTiempoReal;
+    
+    QTimer *relojRepetidorBluetooth; // El reloj que mantendrá vivo el pulso en tu celular
+    char comandoActual;              // Almacena qué letra enviar ('F', 'B', 'L', 'R', 'S')
     QString urlFormateadaVideo;
 };
 
