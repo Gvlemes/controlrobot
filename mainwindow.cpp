@@ -14,12 +14,12 @@
 #include <QListWidget>       
 #include <QListWidgetItem>   
 
-// Estilos globales oscuros con tipografía adaptativa y efectos de luz neón
-const QString ESTILO_BOTON_NORMAL = "color: #00f0ff; background-color: #21262d; border: 2px solid #00f0ff; font-size: 5vw; min-width: 14vw; min-height: 14vw; border-radius: 8px;";
-const QString ESTILO_BOTON_PRESIONADO = "color: #ffffff; background-color: #005f73; border: 3px solid #00f0ff; font-size: 5vw; min-width: 14vw; min-height: 14vw; border-radius: 8px; font-weight: bold;";
+// 📱 CORRECCIÓN DE TAMAÑOS: Se cambiaron las medidas vw por píxeles físicos fijos aptos para celulares
+const QString ESTILO_BOTON_NORMAL = "color: #00f0ff; background-color: #21262d; border: 2px solid #00f0ff; font-size: 18px; min-width: 70px; min-height: 60px; max-width: 70px; max-height: 60px; border-radius: 8px;";
+const QString ESTILO_BOTON_PRESIONADO = "color: #ffffff; background-color: #005f73; border: 3px solid #00f0ff; font-size: 18px; min-width: 70px; min-height: 60px; max-width: 70px; max-height: 60px; border-radius: 8px; font-weight: bold;";
 
 // ============================================================================
-// SUB-VENTANA EMERGENTE: Panel de búsqueda y enlace Bluetooth
+// SUB-VENTANA EMERGENTE: Panel de búsqueda y enlace Bluetooth (Ajustado para Celular)
 // ============================================================================
 class DialogoBluetooth : public QDialog {
 public:
@@ -27,42 +27,44 @@ public:
         : QDialog(parent), adaptador(adaptadorLocal), socketRobot(socketCompartido), btnMain(botonPrincipal), ledIndicator(focoLed) 
     {
         this->setWindowTitle("Hardware Bluetooth");
-        this->resize(400, 480);
+        this->resize(340, 400); // Tamaño controlado para que no se desborde del Samsung
         this->setStyleSheet("background-color: #0d1117; color: white;");
 
         QVBoxLayout *layoutPrincipal = new QVBoxLayout(this);
+        layoutPrincipal->setContentsMargins(10, 10, 10, 10);
 
         // Entrada manual de respaldo por si falla el escáner nativo
         QLabel *lblManual = new QLabel("CONEXIÓN DIRECTA POR MAC:", this);
-        lblManual->setStyleSheet("font-weight: bold; font-size: 11px; color: #ff9f1c; margin-top: 5px;");
+        lblManual->setStyleSheet("font-weight: bold; font-size: 11px; color: #ff9f1c;");
         layoutPrincipal->addWidget(lblManual);
 
         QHBoxLayout *layoutManualEntrada = new QHBoxLayout();
         txtMacManual = new QLineEdit(this);
         txtMacManual->setPlaceholderText("Ej: 00:23:10:01:14:4D");
-        txtMacManual->setStyleSheet("color: white; background-color: #161b22; border: 1px solid #30363d; padding: 8px; font-size: 13px;");
+        txtMacManual->setStyleSheet("color: white; background-color: #161b22; border: 1px solid #30363d; padding: 6px; font-size: 12px;");
         layoutManualEntrada->addWidget(txtMacManual, 1);
 
         QPushButton *btnConectarManual = new QPushButton("🔗 ENLAZAR", this);
-        btnConectarManual->setStyleSheet("color: black; background-color: #ff9f1c; font-weight: bold; padding: 8px; border-radius: 4px;");
+        btnConectarManual->setStyleSheet("color: black; background-color: #ff9f1c; font-weight: bold; padding: 6px; font-size: 11px; border-radius: 4px;");
         layoutManualEntrada->addWidget(btnConectarManual);
         layoutPrincipal->addLayout(layoutManualEntrada);
 
         // Monitor de escaneo por el aire
-        QLabel *titulo = new QLabel("\nDispositivos Detectados en el Entorno:", this);
-        titulo->setStyleSheet("font-weight: bold; font-size: 12px; color: #00f0ff;");
+        QLabel *titulo = new QLabel("Dispositivos Detectados:", this);
+        titulo->setStyleSheet("font-weight: bold; font-size: 11px; color: #00f0ff; margin-top: 5px;");
         layoutPrincipal->addWidget(titulo);
 
         listaDispositivos = new QListWidget(this);
-        listaDispositivos->setStyleSheet("color: #c9d1d9; background-color: #161b22; border: 1px solid #30363d; padding: 5px;");
+        listaDispositivos->setStyleSheet("color: #c9d1d9; background-color: #161b22; border: 1px solid #30363d; font-size: 12px;");
         layoutPrincipal->addWidget(listaDispositivos);
 
+        // BOTONES CLAVE: Se les asignó tamaño fijo para que Windows/Android no los oculten
         btnEscanear = new QPushButton("🔍 INICIAR ESCANEO", this);
-        btnEscanear->setStyleSheet("color: white; background-color: #238636; border: 1px solid #30363d; padding: 10px; font-weight: bold; border-radius: 4px;");
+        btnEscanear->setStyleSheet("color: white; background-color: #238636; border: 1px solid #30363d; min-height: 35px; font-weight: bold; font-size: 11px; border-radius: 4px;");
         layoutPrincipal->addWidget(btnEscanear);
 
-        QPushButton *btnCancelar = new QPushButton("Cerrar panel", this);
-        btnCancelar->setStyleSheet("color: #c9d1d9; background-color: #21262d; border: 1px solid #30363d; padding: 8px; border-radius: 4px;");
+        QPushButton *btnCancelar = new QPushButton("❌ CERRAR PANEL", this);
+        btnCancelar->setStyleSheet("color: #c9d1d9; background-color: #21262d; border: 1px solid #30363d; min-height: 35px; font-weight: bold; font-size: 11px; border-radius: 4px;");
         layoutPrincipal->addWidget(btnCancelar);
 
         agenteDiscovery = new QBluetoothDeviceDiscoveryAgent(this);
@@ -70,7 +72,7 @@ public:
         // Auto-cargar dispositivos emparejados localmente
         QList<QBluetoothAddress> vinculados = adaptador->connectedDevices();
         for (const auto& direccion : vinculados) {
-            listaDispositivos->addItem("Dispositivo Guardado\n" + direccion.toString());
+            listaDispositivos->addItem("Dispositivo Vinculado\n" + direccion.toString());
         }
 
         connect(agenteDiscovery, &QBluetoothDeviceDiscoveryAgent::deviceDiscovered, this, [this](const QBluetoothDeviceInfo &device) {
@@ -139,8 +141,8 @@ private:
 
         connect(socketRobot, &QBluetoothSocket::connected, this, [this]() {
             btnMain->setText("¡CONECTADO!");
-            btnMain->setStyleSheet("color: white; background-color: #00f0ff; font-weight: bold; padding: 6px;");
-            ledIndicator->setStyleSheet("background-color: #39FF14; border: 2px solid #ffffff; border-radius: 10px; min-width: 18px; min-height: 18px; max-width: 18px; max-height: 18px;");
+            btnMain->setStyleSheet("color: white; background-color: #00f0ff; font-weight: bold; font-size: 11px;");
+            ledIndicator->setStyleSheet("background-color: #39FF14; border: 2px solid #ffffff; border-radius: 9px; min-width: 18px; min-height: 18px; max-width: 18px; max-height: 18px;");
             QMessageBox::information(this, "Éxito", "¡Enlace establecido!");
             this->accept(); 
         });
@@ -160,27 +162,27 @@ class DialogoSettings : public QDialog {
 public:
     DialogoSettings(QWidget *parent = nullptr) : QDialog(parent) {
         this->setWindowTitle("Ajustes del Sistema");
-        this->resize(320, 260);
+        this->resize(300, 240);
         this->setStyleSheet("background-color: #0d1117; color: white;");
 
         QVBoxLayout *layout = new QVBoxLayout(this);
         QLabel *titulo = new QLabel("⚙️ MAPEO DE COMANDOS SERIALES", this);
-        titulo->setStyleSheet("font-weight: bold; font-size: 13px; color: #00f0ff; margin-bottom: 10px;");
+        titulo->setStyleSheet("font-weight: bold; font-size: 12px; color: #00f0ff;");
         layout->addWidget(titulo);
 
         QLabel *contenido = new QLabel(this);
-        contenido->setText("• Adelante = F\n\n• Atrás = B\n\n• Izquierda = L\n\n• Derecha = R\n\n• Parar = S");
-        contenido->setStyleSheet("font-size: 13px; color: #c9d1d9; background-color: #161b22; border: 1px solid #30363d; padding: 15px; border-radius: 5px;");
+        contenido->setText("• Adelante = F\n• Atrás = B\n• Izquierda = L\n• Derecha = R\n• Parar = S");
+        contenido->setStyleSheet("font-size: 12px; color: #c9d1d9; background-color: #161b22; border: 1px solid #30363d; padding: 10px; border-radius: 5px;");
         layout->addWidget(contenido);
 
         QPushButton *btnEntendido = new QPushButton("Entendido", this);
-        btnEntendido->setStyleSheet("color: white; background-color: #21262d; padding: 8px; font-weight: bold;");
+        btnEntendido->setStyleSheet("color: white; background-color: #21262d; padding: 6px; font-weight: bold;");
         layout->addWidget(btnEntendido);
         connect(btnEntendido, &QPushButton::clicked, this, &QDialog::accept);
     }
 };
 // ============================================================================
-// INTERFAZ PRINCIPAL: MainWindow (Con dimensiones responsivas elásticas)
+// INTERFAZ PRINCIPAL: MainWindow (Con límites de expansión para el Samsung)
 // ============================================================================
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     this->setStyleSheet("background-color: #0d1117;");
@@ -198,47 +200,50 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     btnIzquierda->setStyleSheet(ESTILO_BOTON_NORMAL);
     btnDerecha->setStyleSheet(ESTILO_BOTON_NORMAL);
 
-    // 🖥️ AJUSTE RESPONSIVO: Quitamos tamaños fijos y añadimos políticas expandibles
+    // 🖥️ SOLUCIÓN PARA LA CÁMARA: Se le dio un tamaño máximo responsivo estricto 
+    // para evitar que se coma toda la pantalla del teléfono celular
     lblMonitorVideo = new QLabel("MONITOR DE VIDEO (STANDBY)", this);
     lblMonitorVideo->setAlignment(Qt::AlignCenter);
-    lblMonitorVideo->setStyleSheet("background-color: black; color: #00f0ff; border: 2px solid #00f0ff; font-weight: bold; font-size: 14px;");
+    lblMonitorVideo->setStyleSheet("background-color: black; color: #00f0ff; border: 2px solid #00f0ff; font-weight: bold; font-size: 13px;");
+    lblMonitorVideo->setMinimumSize(280, 200);
+    lblMonitorVideo->setMaximumSize(480, 280); // Límite estricto de expansión en horizontal
     lblMonitorVideo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
     txtIpVideo = new QLineEdit(this);
-    txtIpVideo->setPlaceholderText("IP:Puerto de tu IP Webcam (Ej: 192.168.1.50:8080)");
-    txtIpVideo->setStyleSheet("color: white; background-color: #161b22; border: 1px solid #30363d; padding: 8px; font-size: 12px;");
+    txtIpVideo->setPlaceholderText("IP de tu IP Webcam (Ej: 192.168.1.50:8080)");
+    txtIpVideo->setStyleSheet("color: white; background-color: #161b22; border: 1px solid #30363d; padding: 6px; font-size: 11px;");
 
     btnConectarVideo = new QPushButton("APLICAR IP", this);
-    btnConectarVideo->setStyleSheet("color: white; background-color: #21262d; border: 1px solid #30363d; padding: 8px; font-weight: bold; font-size: 11px;");
+    btnConectarVideo->setStyleSheet("color: white; background-color: #21262d; border: 1px solid #30363d; padding: 6px; font-weight: bold; font-size: 11px;");
 
     btnBluetooth = new QPushButton("BLUETOOTH", this);
-    btnBluetooth->setStyleSheet("color: white; background-color: #238636; border: 1px solid #30363d; padding: 8px; font-weight: bold; font-size: 11px;");
+    btnBluetooth->setStyleSheet("color: white; background-color: #238636; border: 1px solid #30363d; padding: 6px; font-weight: bold; font-size: 11px;");
 
     lblFocoLed = new QLabel(this);
     lblFocoLed->setStyleSheet("background-color: #FF3131; border: 2px solid #ffffff; border-radius: 9px; min-width: 18px; min-height: 18px; max-width: 18px; max-height: 18px;");
 
     QPushButton *btnSettings = new QPushButton("⚙ SETTINGS", this);
-    btnSettings->setStyleSheet("color: #00f0ff; background-color: #161b22; border: 1px solid #00f0ff; padding: 8px; border-radius: 4px; font-weight: bold; font-size: 11px;");
+    btnSettings->setStyleSheet("color: #00f0ff; background-color: #161b22; border: 1px solid #00f0ff; padding: 6px; border-radius: 4px; font-weight: bold; font-size: 11px;");
 
-    // Layout principal elástico
+    // Construcción de márgenes limpios para teléfonos
     QVBoxLayout *layoutEstructuraVertical = new QVBoxLayout(central);
-    layoutEstructuraVertical->setContentsMargins(10, 10, 10, 10);
-    layoutEstructuraVertical->setSpacing(8);
+    layoutEstructuraVertical->setContentsMargins(8, 8, 8, 8);
+    layoutEstructuraVertical->setSpacing(6);
 
     QHBoxLayout *layoutSuperiorEsparcido = new QHBoxLayout();
     layoutSuperiorEsparcido->addWidget(btnBluetooth);
     layoutSuperiorEsparcido->addWidget(lblFocoLed);
-    layoutSuperiorEsparcido->addSpacing(10);
+    layoutSuperiorEsparcido->addSpacing(8);
     layoutSuperiorEsparcido->addWidget(txtIpVideo, 1); 
     layoutSuperiorEsparcido->addWidget(btnConectarVideo);
-    layoutSuperiorEsparcido->addSpacing(10);
+    layoutSuperiorEsparcido->addSpacing(8);
     layoutSuperiorEsparcido->addWidget(btnSettings);
     
     layoutEstructuraVertical->addLayout(layoutSuperiorEsparcido, 1);
 
-    // Fila de controles horizontales proporcionales
     QHBoxLayout *layoutControlesAbajo = new QHBoxLayout();
 
+    // Panel Izquierdo
     QVBoxLayout *layoutIzquierdo = new QVBoxLayout();
     layoutIzquierdo->addStretch();
     layoutIzquierdo->addWidget(btnIzquierda, 0, Qt::AlignCenter);
@@ -246,9 +251,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     layoutIzquierdo->addWidget(btnDerecha, 0, Qt::AlignCenter);
     layoutIzquierdo->addStretch();
 
+    // Panel Central (Cámara con prioridad controlada)
     QVBoxLayout *layoutMedio = new QVBoxLayout();
-    layoutMedio->addWidget(lblMonitorVideo); 
+    layoutMedio->addWidget(lblMonitorVideo, 0, Qt::AlignCenter); 
 
+    // Panel Derecho
     QVBoxLayout *layoutDerecho = new QVBoxLayout();
     layoutDerecho->addStretch(); 
     layoutDerecho->addWidget(btnArriba, 0, Qt::AlignCenter);
@@ -256,12 +263,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     layoutDerecho->addWidget(btnAbajo, 0, Qt::AlignCenter);
     layoutDerecho->addStretch(); 
 
-    // Distribución matemática de espacios en pantallas móviles (1 parte lados, 4 partes el centro)
     layoutControlesAbajo->addLayout(layoutIzquierdo, 1);
-    layoutControlesAbajo->addLayout(layoutMedio, 4);
+    layoutControlesAbajo->addLayout(layoutMedio, 3); // 3 partes fijas de proporción al centro
     layoutControlesAbajo->addLayout(layoutDerecho, 1);
 
-    layoutEstructuraVertical->addLayout(layoutControlesAbajo, 6);
+    layoutEstructuraVertical->addLayout(layoutControlesAbajo, 5);
 
     socketBluetooth = new QBluetoothSocket(QBluetoothServiceInfo::RfcommProtocol, this);
     managerRedVideo = new QNetworkAccessManager(this);
@@ -311,7 +317,7 @@ void MainWindow::cargarFotogramaEnPantalla(QNetworkReply *reply) {
     if (reply->error() == QNetworkReply::NoError) {
         QImage fotograma;
         if (fotograma.loadFromData(reply->readAll(), "JPEG")) {
-            // 📲 ESCALADO COMPLETO: Reajusta la imagen de la cámara al tamaño exacto de tu celular
+            // 🖥️ SOLUCIÓN TOTAL AL ESCALADO: Forzamos a la imagen JPEG de IP Webcam a respetar el contenedor elástico
             lblMonitorVideo->setPixmap(QPixmap::fromImage(fotograma).scaled(lblMonitorVideo->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
         }
     } else {
