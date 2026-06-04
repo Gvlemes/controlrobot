@@ -306,40 +306,16 @@ void MainWindow::solicitarSiguienteFotograma() {
 void MainWindow::cargarFotogramaEnPantalla(QNetworkReply *reply) {
     if (!reply) return;
     
-    // 🛡️ CONTROL DE SEGURIDAD: Evita que la app intente procesar datos corruptos si Android bloquea el puerto
     if (reply->error() == QNetworkReply::NoError) {
         QByteArray bufferImagen = reply->readAll();
         QImage fotograma;
         if (!bufferImagen.isEmpty() && fotograma.loadFromData(bufferImagen, "JPEG")) {
-            lblMonitorVideo->setPixmap(QPixmap::fromImage(fotograma).scaled(lblMonitorVideo->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+            // 🚀 VELOCIDAD MÁXIMA: Cambiamos SmoothTransformation por FastTransformation
+            // Esto hace que el Samsung dibuje la imagen al instante usando su tarjeta gráfica
+            lblMonitorVideo->setPixmap(QPixmap::fromImage(fotograma).scaled(lblMonitorVideo->size(), Qt::KeepAspectRatio, Qt::FastTransformation));
         }
-        reply->deleteLater();
-        solicitarSiguienteFotograma(); // Dispara la siguiente petición limpia
     } else {
-        // Si hay error de red, limpia la memoria y reintenta a los 500ms para no saturar al celular
-        lblMonitorVideo->setText("ERROR DE SEGURIDAD HTTP\nReintentando enlace local...");
-        reply->deleteLater();
-        QTimer::singleShot(500, this, &MainWindow::solicitarSiguienteFotograma);
+        lblMonitorVideo->setText("ERROR DE RESPUESTA\nIP Webcam no responde a tiempo.");
     }
-}
-
-void MainWindow::transmitirComandoActivo() {
-    if (socketBluetooth && socketBluetooth->isOpen() && comandoActual != 'S') {
-        QByteArray datos;
-        datos.append(comandoActual);
-        socketBluetooth->write(datos);
-    }
-}
-
-void MainWindow::moverAdelante() { } 
-void MainWindow::moverAtras() { }
-void MainWindow::moverIzquierda() { }
-void MainWindow::moverDerecha() { }
-
-void MainWindow::detenerRobot() { 
-    relojRepetidorBluetooth->stop();
-    comandoActual = 'S';
-    if (socketBluetooth && socketBluetooth->isOpen()) {
-        socketBluetooth->write("S");
-    }
+    reply->deleteLater(); 
 }
