@@ -14,12 +14,12 @@
 #include <QListWidget>       
 #include <QListWidgetItem>   
 
-// 📱 CORRECCIÓN DE TAMAÑOS: Se cambiaron las medidas vw por píxeles físicos fijos aptos para celulares
+// Medidas fijas en píxeles para que se vean perfectas en tu Samsung
 const QString ESTILO_BOTON_NORMAL = "color: #00f0ff; background-color: #21262d; border: 2px solid #00f0ff; font-size: 18px; min-width: 70px; min-height: 60px; max-width: 70px; max-height: 60px; border-radius: 8px;";
 const QString ESTILO_BOTON_PRESIONADO = "color: #ffffff; background-color: #005f73; border: 3px solid #00f0ff; font-size: 18px; min-width: 70px; min-height: 60px; max-width: 70px; max-height: 60px; border-radius: 8px; font-weight: bold;";
 
 // ============================================================================
-// SUB-VENTANA EMERGENTE: Panel de búsqueda y enlace Bluetooth (Ajustado para Celular)
+// SUB-VENTANA EMERGENTE: Panel Bluetooth con botones fijos de Cerrar y Escanear
 // ============================================================================
 class DialogoBluetooth : public QDialog {
 public:
@@ -27,13 +27,12 @@ public:
         : QDialog(parent), adaptador(adaptadorLocal), socketRobot(socketCompartido), btnMain(botonPrincipal), ledIndicator(focoLed) 
     {
         this->setWindowTitle("Hardware Bluetooth");
-        this->resize(340, 400); // Tamaño controlado para que no se desborde del Samsung
+        this->resize(340, 400); 
         this->setStyleSheet("background-color: #0d1117; color: white;");
 
         QVBoxLayout *layoutPrincipal = new QVBoxLayout(this);
         layoutPrincipal->setContentsMargins(10, 10, 10, 10);
 
-        // Entrada manual de respaldo por si falla el escáner nativo
         QLabel *lblManual = new QLabel("CONEXIÓN DIRECTA POR MAC:", this);
         lblManual->setStyleSheet("font-weight: bold; font-size: 11px; color: #ff9f1c;");
         layoutPrincipal->addWidget(lblManual);
@@ -49,7 +48,6 @@ public:
         layoutManualEntrada->addWidget(btnConectarManual);
         layoutPrincipal->addLayout(layoutManualEntrada);
 
-        // Monitor de escaneo por el aire
         QLabel *titulo = new QLabel("Dispositivos Detectados:", this);
         titulo->setStyleSheet("font-weight: bold; font-size: 11px; color: #00f0ff; margin-top: 5px;");
         layoutPrincipal->addWidget(titulo);
@@ -58,7 +56,6 @@ public:
         listaDispositivos->setStyleSheet("color: #c9d1d9; background-color: #161b22; border: 1px solid #30363d; font-size: 12px;");
         layoutPrincipal->addWidget(listaDispositivos);
 
-        // BOTONES CLAVE: Se les asignó tamaño fijo para que Windows/Android no los oculten
         btnEscanear = new QPushButton("🔍 INICIAR ESCANEO", this);
         btnEscanear->setStyleSheet("color: white; background-color: #238636; border: 1px solid #30363d; min-height: 35px; font-weight: bold; font-size: 11px; border-radius: 4px;");
         layoutPrincipal->addWidget(btnEscanear);
@@ -69,7 +66,6 @@ public:
 
         agenteDiscovery = new QBluetoothDeviceDiscoveryAgent(this);
 
-        // Auto-cargar dispositivos emparejados localmente
         QList<QBluetoothAddress> vinculados = adaptador->connectedDevices();
         for (const auto& direccion : vinculados) {
             listaDispositivos->addItem("Dispositivo Vinculado\n" + direccion.toString());
@@ -182,7 +178,7 @@ public:
     }
 };
 // ============================================================================
-// INTERFAZ PRINCIPAL: MainWindow (Con límites de expansión para el Samsung)
+// INTERFAZ PRINCIPAL: MainWindow (Con flechas de izquierda y derecha alineadas)
 // ============================================================================
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     this->setStyleSheet("background-color: #0d1117;");
@@ -200,13 +196,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     btnIzquierda->setStyleSheet(ESTILO_BOTON_NORMAL);
     btnDerecha->setStyleSheet(ESTILO_BOTON_NORMAL);
 
-    // 🖥️ SOLUCIÓN PARA LA CÁMARA: Se le dio un tamaño máximo responsivo estricto 
-    // para evitar que se coma toda la pantalla del teléfono celular
     lblMonitorVideo = new QLabel("MONITOR DE VIDEO (STANDBY)", this);
     lblMonitorVideo->setAlignment(Qt::AlignCenter);
     lblMonitorVideo->setStyleSheet("background-color: black; color: #00f0ff; border: 2px solid #00f0ff; font-weight: bold; font-size: 13px;");
-    lblMonitorVideo->setMinimumSize(280, 200);
-    lblMonitorVideo->setMaximumSize(480, 280); // Límite estricto de expansión en horizontal
+    lblMonitorVideo->setMinimumSize(280, 180);
+    lblMonitorVideo->setMaximumSize(480, 240); // Control estricto para que no se coma la pantalla
     lblMonitorVideo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
     txtIpVideo = new QLineEdit(this);
@@ -225,7 +219,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     QPushButton *btnSettings = new QPushButton("⚙ SETTINGS", this);
     btnSettings->setStyleSheet("color: #00f0ff; background-color: #161b22; border: 1px solid #00f0ff; padding: 6px; border-radius: 4px; font-weight: bold; font-size: 11px;");
 
-    // Construcción de márgenes limpios para teléfonos
     QVBoxLayout *layoutEstructuraVertical = new QVBoxLayout(central);
     layoutEstructuraVertical->setContentsMargins(8, 8, 8, 8);
     layoutEstructuraVertical->setSpacing(6);
@@ -241,31 +234,32 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     
     layoutEstructuraVertical->addLayout(layoutSuperiorEsparcido, 1);
 
+    // 📱 INTERFAZ HORIZONTAL LIMPIA: Acomodo perfecto para el Samsung A06
     QHBoxLayout *layoutControlesAbajo = new QHBoxLayout();
 
-    // Panel Izquierdo
-    QVBoxLayout *layoutIzquierdo = new QVBoxLayout();
-    layoutIzquierdo->addStretch();
-    layoutIzquierdo->addWidget(btnIzquierda, 0, Qt::AlignCenter);
-    layoutIzquierdo->addSpacing(15);
-    layoutIzquierdo->addWidget(btnDerecha, 0, Qt::AlignCenter);
-    layoutIzquierdo->addStretch();
+    // 1. Columna de velocidad / dirección (Adelante y Atrás)
+    QVBoxLayout *layoutVerticalMover = new QVBoxLayout();
+    layoutVerticalMover->addStretch();
+    layoutVerticalMover->addWidget(btnArriba, 0, Qt::AlignCenter);
+    layoutVerticalMover->addSpacing(15);
+    layoutVerticalMover->addWidget(btnAbajo, 0, Qt::AlignCenter);
+    layoutVerticalMover->addStretch();
 
-    // Panel Central (Cámara con prioridad controlada)
-    QVBoxLayout *layoutMedio = new QVBoxLayout();
-    layoutMedio->addWidget(lblMonitorVideo, 0, Qt::AlignCenter); 
+    // 2. Columna Central: Contiene la Cámara arriba y las Flechas de Giro abajo
+    QVBoxLayout *layoutCentroMultimedia = new QVBoxLayout();
+    layoutCentroMultimedia->addWidget(lblMonitorVideo, 0, Qt::AlignCenter);
+    layoutCentroMultimedia->addSpacing(10);
+    
+    // 🛠️ ACOMODO DE IZQUIERDA Y DERECHA: Fila horizontal perfecta justo abajo del video
+    QHBoxLayout *layoutFilaGiros = new QHBoxLayout();
+    layoutFilaGiros->setAlignment(Qt::AlignCenter);
+    layoutFilaGiros->addWidget(btnIzquierda);
+    layoutFilaGiros->addSpacing(40); // Espacio de separación cómodo para tus pulgares
+    layoutFilaGiros->addWidget(btnDerecha);
+    layoutCentroMultimedia->addLayout(layoutFilaGiros);
 
-    // Panel Derecho
-    QVBoxLayout *layoutDerecho = new QVBoxLayout();
-    layoutDerecho->addStretch(); 
-    layoutDerecho->addWidget(btnArriba, 0, Qt::AlignCenter);
-    layoutDerecho->addSpacing(15);
-    layoutDerecho->addWidget(btnAbajo, 0, Qt::AlignCenter);
-    layoutDerecho->addStretch(); 
-
-    layoutControlesAbajo->addLayout(layoutIzquierdo, 1);
-    layoutControlesAbajo->addLayout(layoutMedio, 3); // 3 partes fijas de proporción al centro
-    layoutControlesAbajo->addLayout(layoutDerecho, 1);
+    layoutControlesAbajo->addLayout(layoutVerticalMover, 1);
+    layoutControlesAbajo->addLayout(layoutCentroMultimedia, 3);
 
     layoutEstructuraVertical->addLayout(layoutControlesAbajo, 5);
 
@@ -317,7 +311,6 @@ void MainWindow::cargarFotogramaEnPantalla(QNetworkReply *reply) {
     if (reply->error() == QNetworkReply::NoError) {
         QImage fotograma;
         if (fotograma.loadFromData(reply->readAll(), "JPEG")) {
-            // 🖥️ SOLUCIÓN TOTAL AL ESCALADO: Forzamos a la imagen JPEG de IP Webcam a respetar el contenedor elástico
             lblMonitorVideo->setPixmap(QPixmap::fromImage(fotograma).scaled(lblMonitorVideo->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
         }
     } else {
