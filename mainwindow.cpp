@@ -14,14 +14,17 @@
 #include <QListWidget>       
 #include <QListWidgetItem>   
 
+// Medidas fijas en píxeles adaptadas para la pantalla de tu Samsung
 const QString ESTILO_BOTON_NORMAL = "color: #00f0ff; background-color: #21262d; border: 2px solid #00f0ff; font-size: 18px; min-width: 70px; min-height: 60px; max-width: 70px; max-height: 60px; border-radius: 8px;";
 const QString ESTILO_BOTON_PRESIONADO = "color: #ffffff; background-color: #005f73; border: 3px solid #00f0ff; font-size: 18px; min-width: 70px; min-height: 60px; max-width: 70px; max-height: 60px; border-radius: 8px; font-weight: bold;";
 
+// ============================================================================
+// SUB-VENTANA EMERGENTE: Panel Bluetooth Seguro con Conexión por MAC
+// ============================================================================
 class DialogoBluetooth : public QDialog {
 public:
     DialogoBluetooth(QBluetoothLocalDevice *adaptadorLocal, QBluetoothSocket *socketCompartido, QPushButton *botonPrincipal, QLabel *focoLed, QWidget *parent = nullptr) 
-        : QDialog(parent), adaptador(adaptadorLocal), socketRobot(socketCompartido), btnMain(botonPrincipal), ledIndicator(focoLed) 
-    {
+        : QDialog(parent), adaptador(adaptadorLocal), socketRobot(socketCompartido), btnMain(botonPrincipal), ledIndicator(focoLed) {
         this->setWindowTitle("Hardware Bluetooth");
         this->resize(340, 400); 
         this->setStyleSheet("background-color: #0d1117; color: white;");
@@ -186,6 +189,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     btnIzquierda->setStyleSheet(ESTILO_BOTON_NORMAL);
     btnDerecha->setStyleSheet(ESTILO_BOTON_NORMAL);
 
+    // Evita el bug de rebote táctil de Android
     btnArriba->setAutoRepeat(false);
     btnAbajo->setAutoRepeat(false);
     btnIzquierda->setAutoRepeat(false);
@@ -231,6 +235,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     QHBoxLayout *layoutControlesAbajo = new QHBoxLayout();
 
+    // 1. Columna de Adelante y Atrás
     QVBoxLayout *layoutVerticalMover = new QVBoxLayout();
     layoutVerticalMover->addStretch();
     layoutVerticalMover->addWidget(btnArriba, 0, Qt::AlignCenter);
@@ -238,6 +243,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     layoutVerticalMover->addWidget(btnAbajo, 0, Qt::AlignCenter);
     layoutVerticalMover->addStretch();
 
+    // 2. Columna Central: Cámara arriba y Flechas de Giro juntas ABAJO de la cámara
     QVBoxLayout *layoutCentroMultimedia = new QVBoxLayout();
     layoutCentroMultimedia->addWidget(lblMonitorVideo, 0, Qt::AlignCenter);
     layoutCentroMultimedia->addSpacing(10);
@@ -256,8 +262,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     socketBluetooth = new QBluetoothSocket(QBluetoothServiceInfo::RfcommProtocol, this);
     managerRedVideo = new QNetworkAccessManager(this);
-    relojVideoTiempoReal = nullptr; 
+    
+    // Reloj regulado a 100ms para estabilizar el flujo de video en red
+    relojVideoTiempoReal = new QTimer(this);
 
+    // Motor de ráfagas fijas a 50ms para mantener la señal de pulsación táctil viva
     comandoActual = 'S'; 
     relojRepetidorBluetooth = new QTimer(this);
 
@@ -269,9 +278,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     connect(btnSettings, &QPushButton::clicked, this, [this]() { DialogoSettings v(this); v.exec(); });
     connect(btnConectarVideo, &QPushButton::clicked, this, &MainWindow::aplicarNuevaIpVideo);
+    
+    connect(relojVideoTiempoReal, &QTimer::timeout, this, &MainWindow::solicitarSiguienteFotograma);
     connect(managerRedVideo, &QNetworkAccessManager::finished, this, &MainWindow::cargarFotogramaEnPantalla);
     connect(relojRepetidorBluetooth, &QTimer::timeout, this, &MainWindow::transmitirComandoActivo);
 
+    // Conexión por pulso por software (Mantiene la señal viva aunque muevas el dedo)
     connect(btnArriba, &QPushButton::pressed, this, [this]() { btnArriba->setStyleSheet(ESTILO_BOTON_PRESIONADO); comandoActual = 'F'; relojRepetidorBluetooth->start(50); });
     connect(btnArriba, &QPushButton::released, this, [this]() { btnArriba->setStyleSheet(ESTILO_BOTON_NORMAL); detenerRobot(); });
     connect(btnAbajo, &QPushButton::pressed, this, [this]() { btnAbajo->setStyleSheet(ESTILO_BOTON_PRESIONADO); comandoActual = 'B'; relojRepetidorBluetooth->start(50); });
@@ -292,8 +304,9 @@ void MainWindow::aplicarNuevaIpVideo() {
     if (urlTexto.endsWith("/")) urlTexto = urlTexto.chopped(1);
     
     urlFormateadaVideo = "http://" + urlTexto + "/shot.jpg";
-    lblMonitorVideo->setText("INICIANDO FLUJO EN RED LOCAL...");
-    solicitarSiguienteFotograma();
+    lblMonitorVideo->setText("CONECTANDO STREAMING REGULADO...");
+    
+    relojVideoTiempoReal->start(100); // 10 fotos por segundo fijas para no saturar al celular
 }
 
 void MainWindow::solicitarSiguienteFotograma() {
@@ -310,12 +323,32 @@ void MainWindow::cargarFotogramaEnPantalla(QNetworkReply *reply) {
         QByteArray bufferImagen = reply->readAll();
         QImage fotograma;
         if (!bufferImagen.isEmpty() && fotograma.loadFromData(bufferImagen, "JPEG")) {
-            // 🚀 VELOCIDAD MÁXIMA: Cambiamos SmoothTransformation por FastTransformation
-            // Esto hace que el Samsung dibuje la imagen al instante usando su tarjeta gráfica
+            // 🚀 VELOCIDAD MÁXIMA: Dibuja la foto usando la tarjeta gráfica al instante
             lblMonitorVideo->setPixmap(QPixmap::fromImage(fotograma).scaled(lblMonitorVideo->size(), Qt::KeepAspectRatio, Qt::FastTransformation));
         }
     } else {
-        lblMonitorVideo->setText("ERROR DE RESPUESTA\nIP Webcam no responde a tiempo.");
+        lblMonitorVideo->setText("ERROR DE RESPUESTA\nIP Webcam saturada.");
     }
     reply->deleteLater(); 
+}
+
+void MainWindow::transmitirComandoActivo() {
+    if (socketBluetooth && socketBluetooth->isOpen() && comandoActual != 'S') {
+        QByteArray datos;
+        datos.append(comandoActual);
+        socketBluetooth->write(datos);
+    }
+}
+
+void MainWindow::moverAdelante() { } 
+void MainWindow::moverAtras() { }
+void MainWindow::moverIzquierda() { }
+void MainWindow::moverDerecha() { }
+
+void MainWindow::detenerRobot() { 
+    relojRepetidorBluetooth->stop();
+    comandoActual = 'S';
+    if (socketBluetooth && socketBluetooth->isOpen()) {
+        socketBluetooth->write("S");
+    }
 }
