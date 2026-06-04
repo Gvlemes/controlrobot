@@ -14,12 +14,12 @@
 #include <QListWidget>       
 #include <QListWidgetItem>   
 
-// Medidas fijas en píxeles para que se vean perfectas en tu Samsung
+// Medidas fijas en píxeles adaptadas para la pantalla de tu Samsung
 const QString ESTILO_BOTON_NORMAL = "color: #00f0ff; background-color: #21262d; border: 2px solid #00f0ff; font-size: 18px; min-width: 70px; min-height: 60px; max-width: 70px; max-height: 60px; border-radius: 8px;";
 const QString ESTILO_BOTON_PRESIONADO = "color: #ffffff; background-color: #005f73; border: 3px solid #00f0ff; font-size: 18px; min-width: 70px; min-height: 60px; max-width: 70px; max-height: 60px; border-radius: 8px; font-weight: bold;";
 
 // ============================================================================
-// SUB-VENTANA EMERGENTE: Panel Bluetooth con botones fijos de Cerrar y Escanear
+// SUB-VENTANA EMERGENTE: Panel Bluetooth Seguro
 // ============================================================================
 class DialogoBluetooth : public QDialog {
 public:
@@ -178,7 +178,7 @@ public:
     }
 };
 // ============================================================================
-// INTERFAZ PRINCIPAL: MainWindow (Con flechas de izquierda y derecha alineadas)
+// INTERFAZ PRINCIPAL: MainWindow (Fijando el pulso continuo y la cámara)
 // ============================================================================
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     this->setStyleSheet("background-color: #0d1117;");
@@ -196,11 +196,18 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     btnIzquierda->setStyleSheet(ESTILO_BOTON_NORMAL);
     btnDerecha->setStyleSheet(ESTILO_BOTON_NORMAL);
 
+    // ⚠️ SOLUCIÓN CRÍTICA PARA ANDROID: Desactivamos la autorepetición del sistema operativo.
+    // Esto evita que se manden ráfagas repetidas y permite un único pulso largo y fluido.
+    btnArriba->setAutoRepeat(false);
+    btnAbajo->setAutoRepeat(false);
+    btnIzquierda->setAutoRepeat(false);
+    btnDerecha->setAutoRepeat(false);
+
     lblMonitorVideo = new QLabel("MONITOR DE VIDEO (STANDBY)", this);
     lblMonitorVideo->setAlignment(Qt::AlignCenter);
     lblMonitorVideo->setStyleSheet("background-color: black; color: #00f0ff; border: 2px solid #00f0ff; font-weight: bold; font-size: 13px;");
     lblMonitorVideo->setMinimumSize(280, 180);
-    lblMonitorVideo->setMaximumSize(480, 240); // Control estricto para que no se coma la pantalla
+    lblMonitorVideo->setMaximumSize(480, 240); 
     lblMonitorVideo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
     txtIpVideo = new QLineEdit(this);
@@ -234,10 +241,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     
     layoutEstructuraVertical->addLayout(layoutSuperiorEsparcido, 1);
 
-    // 📱 INTERFAZ HORIZONTAL LIMPIA: Acomodo perfecto para el Samsung A06
     QHBoxLayout *layoutControlesAbajo = new QHBoxLayout();
 
-    // 1. Columna de velocidad / dirección (Adelante y Atrás)
+    // 1. Columna de Adelante y Atrás
     QVBoxLayout *layoutVerticalMover = new QVBoxLayout();
     layoutVerticalMover->addStretch();
     layoutVerticalMover->addWidget(btnArriba, 0, Qt::AlignCenter);
@@ -245,16 +251,15 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     layoutVerticalMover->addWidget(btnAbajo, 0, Qt::AlignCenter);
     layoutVerticalMover->addStretch();
 
-    // 2. Columna Central: Contiene la Cámara arriba y las Flechas de Giro abajo
+    // 2. Columna Central (Cámara arriba y Flechas de Giro juntas abajo)
     QVBoxLayout *layoutCentroMultimedia = new QVBoxLayout();
     layoutCentroMultimedia->addWidget(lblMonitorVideo, 0, Qt::AlignCenter);
     layoutCentroMultimedia->addSpacing(10);
     
-    // 🛠️ ACOMODO DE IZQUIERDA Y DERECHA: Fila horizontal perfecta justo abajo del video
     QHBoxLayout *layoutFilaGiros = new QHBoxLayout();
     layoutFilaGiros->setAlignment(Qt::AlignCenter);
     layoutFilaGiros->addWidget(btnIzquierda);
-    layoutFilaGiros->addSpacing(40); // Espacio de separación cómodo para tus pulgares
+    layoutFilaGiros->addSpacing(40); 
     layoutFilaGiros->addWidget(btnDerecha);
     layoutCentroMultimedia->addLayout(layoutFilaGiros);
 
@@ -308,6 +313,7 @@ void MainWindow::solicitarSiguienteFotograma() {
 
 void MainWindow::cargarFotogramaEnPantalla(QNetworkReply *reply) {
     if (!reply) return;
+    // Forzamos la carga fluida incluso si la antena está transmitiendo datos
     if (reply->error() == QNetworkReply::NoError) {
         QImage fotograma;
         if (fotograma.loadFromData(reply->readAll(), "JPEG")) {
