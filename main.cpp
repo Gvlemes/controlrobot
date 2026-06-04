@@ -1,36 +1,102 @@
-#include "mainwindow.h"
-#include <QApplication>
+name: Compilar APK del Robot
 
-// Librerías nativas de Qt6 para solicitar permisos dinámicos en Android
-#include <QtCore/QCoreApplication>
-#include <QPermissions>
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
 
-int main(int argc, char *argv[])
-{
-    QApplication a(argc, argv);
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
 
-    // ---- SOLICITUD DE PERMISOS REAL EN PANTALLA PARA CELULARES ----
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
 
-    // 1. Solicitar Permiso de Escaneo de Dispositivos Cercanos (Bluetooth Scan)
-    QBluetoothPermission permisoScan;
-    qApp->requestPermission(permisoScan, [](const QPermission &permission) {
-        if (permission.status() != Qt::PermissionStatus::Granted) {
-            qWarning("Permiso de escaneo Bluetooth denegado por el usuario.");
-        }
-    });
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
 
-    // 2. Solicitar Permiso de Ubicación Fina Estricta (Obligatorio por Android para ver Bluetooth Clásico/BLE)
-    QLocationPermission permisoUbicacion;
-    permisoUbicacion.setAccuracy(QLocationPermission::Precise);
-    qApp->requestPermission(permisoUbicacion, [](const QPermission &permission) {
-        if (permission.status() != Qt::PermissionStatus::Granted) {
-            qWarning("Permiso de Ubicación denegado. No se detectarán robots.");
-        }
-    });
+      - name: Install Android SDK Platform 34
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" "build-tools;34.0.0"
 
-    // ---------------------------------------------------------------
+      - name: Install Build Tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build
 
-    MainWindow w;
-    w.show();
-    return a.exec();
-}
+      - name: Install Qt with Bluetooth & Network
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.7.0'
+          target: 'android'
+          arch: 'android_arm64_v8a'
+          modules: 'qtconnectivity'
+
+      # Configuración de CMake en modo Debug
+      - name: Configure CMake
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_ROOT/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-34 \
+            -DCMAKE_PREFIX_PATH="${{ env.QT_ROOT_DIR }}" \
+            -DCMAKE_FIND_ROOT_PATH="${{ env.QT_ROOT_DIR }}" \
+            -DQT_ANDROID_SDK_ROOT="$ANDROID_HOME" \
+            -DQT_ANDROID_NDK_ROOT="$ANDROID_NDK_ROOT" \
+            -DQT_ANDROID_SDK_BUILD_TOOLS_REVISION="34.0.0" \
+            -Dandroid_sdk_build_tools_revision="34.0.0" \
+            -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Compile C++ Binaries
+        run: |
+          cmake --build build --target RobotControlPro
+
+      - name: Prepare Android Deployment Folders
+        run: |
+          mkdir -p android
+          mkdir -p build/android-build/libs/arm64-v8a
+          cp build/libRobotControlPro_arm64-v8a.so build/android-build/libs/arm64-v8a/
+
+      - name: Fix Gradle Build Tools and Licenses
+        run: |
+          sed -i '/sdk_build_tools_revision/d' build/android-RobotControlPro-deployment-settings.json
+          
+          export QT_HOST_PATH="/home/runner/work/controlrobot/Qt/6.7.0/gcc_64"
+          $QT_HOST_PATH/bin/androiddeployqt --input build/android-RobotControlPro-deployment-settings.json --output build/android-build --android-platform android-34 || true
+          
+          if [ -f "build/android-build/build.gradle" ]; then
+            sed -i 's/buildToolsVersion.*/buildToolsVersion "34.0.0"/g' build/android-build/build.gradle
+          fi
+          
+          mkdir -p build/android-build/licenses
+          cp -r $ANDROID_HOME/licenses/* build/android-build/licenses/
+
+      # SOLUCIÓN: Agregamos el parámetro obligatorio '--debug' para forzar la autofirma de desarrollo de Google
+      # Esto genera un apk válido con firmas de prueba en lugar de un apk vacío sin firmar
+      - name: Build Android APK Manually
+        run: |
+          export JAVA_HOME=$JAVA_HOME_17_X64
+          export ANDROID_HOME=$ANDROID_HOME
+          export ANDROID_NDK_ROOT=$ANDROID_NDK_ROOT
+          export QT_HOST_PATH="/home/runner/work/controlrobot/Qt/6.7.0/gcc_64"
+          
+          $QT_HOST_PATH/bin/androiddeployqt \
+            --input build/android-RobotControlPro-deployment-settings.json \
+            --output build/android-build \
+            --android-platform android-34 \
+            --gradle \
+            --debug
+
+      # Guardamos el APK definitivo firmado en modo depuración
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: RobotControlPro-APK
+          path: build/**/*.apk
+          if-no-files-found: error
