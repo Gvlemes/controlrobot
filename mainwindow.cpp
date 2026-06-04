@@ -14,7 +14,6 @@
 #include <QListWidget>       
 #include <QListWidgetItem>   
 
-// Medidas fijas en píxeles adaptadas para la pantalla de tu Samsung
 const QString ESTILO_BOTON_NORMAL = "color: #00f0ff; background-color: #21262d; border: 2px solid #00f0ff; font-size: 18px; min-width: 70px; min-height: 60px; max-width: 70px; max-height: 60px; border-radius: 8px;";
 const QString ESTILO_BOTON_PRESIONADO = "color: #ffffff; background-color: #005f73; border: 3px solid #00f0ff; font-size: 18px; min-width: 70px; min-height: 60px; max-width: 70px; max-height: 60px; border-radius: 8px; font-weight: bold;";
 
@@ -177,9 +176,6 @@ public:
         connect(btnEntendido, &QPushButton::clicked, this, &QDialog::accept);
     }
 };
-// ============================================================================
-// INTERFAZ PRINCIPAL: MainWindow (Fijando el pulso continuo y la cámara)
-// ============================================================================
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     this->setStyleSheet("background-color: #0d1117;");
 
@@ -196,8 +192,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     btnIzquierda->setStyleSheet(ESTILO_BOTON_NORMAL);
     btnDerecha->setStyleSheet(ESTILO_BOTON_NORMAL);
 
-    // ⚠️ SOLUCIÓN CRÍTICA PARA ANDROID: Desactivamos la autorepetición del sistema operativo.
-    // Esto evita que se manden ráfagas repetidas y permite un único pulso largo y fluido.
     btnArriba->setAutoRepeat(false);
     btnAbajo->setAutoRepeat(false);
     btnIzquierda->setAutoRepeat(false);
@@ -243,7 +237,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     QHBoxLayout *layoutControlesAbajo = new QHBoxLayout();
 
-    // 1. Columna de Adelante y Atrás
     QVBoxLayout *layoutVerticalMover = new QVBoxLayout();
     layoutVerticalMover->addStretch();
     layoutVerticalMover->addWidget(btnArriba, 0, Qt::AlignCenter);
@@ -251,7 +244,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     layoutVerticalMover->addWidget(btnAbajo, 0, Qt::AlignCenter);
     layoutVerticalMover->addStretch();
 
-    // 2. Columna Central (Cámara arriba y Flechas de Giro juntas abajo)
     QVBoxLayout *layoutCentroMultimedia = new QVBoxLayout();
     layoutCentroMultimedia->addWidget(lblMonitorVideo, 0, Qt::AlignCenter);
     layoutCentroMultimedia->addSpacing(10);
@@ -270,7 +262,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     socketBluetooth = new QBluetoothSocket(QBluetoothServiceInfo::RfcommProtocol, this);
     managerRedVideo = new QNetworkAccessManager(this);
-    relojVideoTiempoReal = new QTimer(this);
+    relojVideoTiempoReal = nullptr; 
+
+    // 🛠️ MOTOR DE PANDA CONTINUO: Inicializamos el reloj repetidor de datos seriales
+    comandoActual = 'S'; // Estado inicial quieto (Stop)
+    relojRepetidorBluetooth = new QTimer(this);
 
     connect(btnBluetooth, &QPushButton::clicked, this, [this]() {
         QBluetoothLocalDevice adaptadorLocal(this);
@@ -280,16 +276,22 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     connect(btnSettings, &QPushButton::clicked, this, [this]() { DialogoSettings v(this); v.exec(); });
     connect(btnConectarVideo, &QPushButton::clicked, this, &MainWindow::aplicarNuevaIpVideo);
-    connect(relojVideoTiempoReal, &QTimer::timeout, this, &MainWindow::solicitarSiguienteFotograma);
     connect(managerRedVideo, &QNetworkAccessManager::finished, this, &MainWindow::cargarFotogramaEnPantalla);
 
-    connect(btnArriba, &QPushButton::pressed, this, [this]() { btnArriba->setStyleSheet(ESTILO_BOTON_PRESIONADO); moverAdelante(); });
+    // Conectamos el reloj de ráfagas a la función que escribe en las antenas
+    connect(relojRepetidorBluetooth, &QTimer::timeout, this, &MainWindow::transmitirComandoActivo);
+
+    // 🚀 NUEVA LÓGICA DE CONTROL CONTINUO: Los botones solo cambian la variable y prenden el reloj
+    connect(btnArriba, &QPushButton::pressed, this, [this]() { btnArriba->setStyleSheet(ESTILO_BOTON_PRESIONADO); comandoActual = 'F'; relojRepetidorBluetooth->start(50); });
     connect(btnArriba, &QPushButton::released, this, [this]() { btnArriba->setStyleSheet(ESTILO_BOTON_NORMAL); detenerRobot(); });
-    connect(btnAbajo, &QPushButton::pressed, this, [this]() { btnAbajo->setStyleSheet(ESTILO_BOTON_PRESIONADO); moverAtras(); });
+    
+    connect(btnAbajo, &QPushButton::pressed, this, [this]() { btnAbajo->setStyleSheet(ESTILO_BOTON_PRESIONADO); comandoActual = 'B'; relojRepetidorBluetooth->start(50); });
     connect(btnAbajo, &QPushButton::released, this, [this]() { btnAbajo->setStyleSheet(ESTILO_BOTON_NORMAL); detenerRobot(); });
-    connect(btnIzquierda, &QPushButton::pressed, this, [this]() { btnIzquierda->setStyleSheet(ESTILO_BOTON_PRESIONADO); moverIzquierda(); });
+    
+    connect(btnIzquierda, &QPushButton::pressed, this, [this]() { btnIzquierda->setStyleSheet(ESTILO_BOTON_PRESIONADO); comandoActual = 'L'; relojRepetidorBluetooth->start(50); });
     connect(btnIzquierda, &QPushButton::released, this, [this]() { btnIzquierda->setStyleSheet(ESTILO_BOTON_NORMAL); detenerRobot(); });
-    connect(btnDerecha, &QPushButton::pressed, this, [this]() { btnDerecha->setStyleSheet(ESTILO_BOTON_PRESIONADO); moverDerecha(); });
+    
+    connect(btnDerecha, &QPushButton::pressed, this, [this]() { btnDerecha->setStyleSheet(ESTILO_BOTON_PRESIONADO); comandoActual = 'R'; relojRepetidorBluetooth->start(50); });
     connect(btnDerecha, &QPushButton::released, this, [this]() { btnDerecha->setStyleSheet(ESTILO_BOTON_NORMAL); detenerRobot(); });
 }
 MainWindow::~MainWindow() {
@@ -301,33 +303,54 @@ void MainWindow::aplicarNuevaIpVideo() {
     if(urlTexto.isEmpty()) return;
     urlTexto.remove("http://").remove("https://").remove("/video").remove("/shot.jpg");
     if (urlTexto.endsWith("/")) urlTexto = urlTexto.chopped(1);
+    
     urlFormateadaVideo = "http://" + urlTexto + "/shot.jpg";
-    lblMonitorVideo->setText("CONECTANDO STREAMING MULTIMEDIA...");
-    relojVideoTiempoReal->start(45); 
+    lblMonitorVideo->setText("INICIANDO FLUJO ULTRA-VELOZ...");
+    solicitarSiguienteFotograma();
 }
 
 void MainWindow::solicitarSiguienteFotograma() {
     if (urlFormateadaVideo.isEmpty()) return;
-    managerRedVideo->get(QNetworkRequest(QUrl(urlFormateadaVideo)));
+    QNetworkRequest request((QUrl(urlFormateadaVideo)));
+    request.setAttribute(QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::AlwaysNetwork);
+    managerRedVideo->get(request);
 }
 
 void MainWindow::cargarFotogramaEnPantalla(QNetworkReply *reply) {
     if (!reply) return;
-    // Forzamos la carga fluida incluso si la antena está transmitiendo datos
     if (reply->error() == QNetworkReply::NoError) {
         QImage fotograma;
         if (fotograma.loadFromData(reply->readAll(), "JPEG")) {
             lblMonitorVideo->setPixmap(QPixmap::fromImage(fotograma).scaled(lblMonitorVideo->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
         }
+        reply->deleteLater();
+        solicitarSiguienteFotograma(); // Pide la siguiente foto de forma asíncrona (Velocidad máxima)
     } else {
-        lblMonitorVideo->setText("ERROR DE ENLACE\nRevisa la IP.");
-        relojVideoTiempoReal->stop();
+        lblMonitorVideo->setText("STREAMING PAUSADO\nRevisa la IP.");
+        reply->deleteLater();
     }
-    reply->deleteLater();
 }
 
-void MainWindow::moverAdelante() { if(socketBluetooth && socketBluetooth->isOpen()) socketBluetooth->write("F"); }
-void MainWindow::moverAtras() { if(socketBluetooth && socketBluetooth->isOpen()) socketBluetooth->write("B"); }
-void MainWindow::moverIzquierda() { if(socketBluetooth && socketBluetooth->isOpen()) socketBluetooth->write("L"); }
-void MainWindow::moverDerecha() { if(socketBluetooth && socketBluetooth->isOpen()) socketBluetooth->write("R"); }
-void MainWindow::detenerRobot() { if(socketBluetooth && socketBluetooth->isOpen()) socketBluetooth->write("S"); }
+// 🎯 TRANSMISOR OFICIAL DE PULSOS CONTINUOS
+void MainWindow::transmitirComandoActivo() {
+    if (socketBluetooth && socketBluetooth->isOpen() && comandoActual != 'S') {
+        // Envía una sola letra limpia cada 50ms por el aire, manteniendo el Arduino activo
+        QByteArray datos;
+        datos.append(comandoActual);
+        socketBluetooth->write(datos);
+    }
+}
+
+void MainWindow::moverAdelante() { } // Mapeado directo por el reloj interno
+void MainWindow::moverAtras() { }
+void MainWindow::moverIzquierda() { }
+void MainWindow::moverDerecha() { }
+
+void MainWindow::detenerRobot() { 
+    // Apaga las ráfagas y le manda una única orden de STOP definitiva al Arduino
+    relojRepetidorBluetooth->stop();
+    comandoActual = 'S';
+    if (socketBluetooth && socketBluetooth->isOpen()) {
+        socketBluetooth->write("S");
+    }
+}
