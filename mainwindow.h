@@ -1,4 +1,4 @@
-#define MAINWINDOW_H
+#ifndef MAINWINDOW_H    // <-- CORREGIDO: Ahora el #endif final tiene su pareja correspondiente
 #define MAINWINDOW_H
 
 #include <QMainWindow>
@@ -23,7 +23,7 @@ private slots:
     void aplicarNuevaIpVideo();
     void solicitarSiguienteFotograma();
     void cargarFotogramaEnPantalla(QNetworkReply *reply);
-    void transmitirComandoActivo(); // Nuevo método repetidor de ráfagas
+    void transmitirComandoActivo(); 
 
     void moverAdelante();
     void moverAtras();
@@ -48,8 +48,8 @@ private:
     QNetworkAccessManager *managerRedVideo;
     QTimer *relojVideoTiempoReal;
     
-    QTimer *relojRepetidorBluetooth; // El reloj que mantendrá vivo el pulso en tu celular
-    char comandoActual;              // Almacena qué letra enviar ('F', 'B', 'L', 'R', 'S')
+    QTimer *relojRepetidorBluetooth; 
+    char comandoActual;              
     QString urlFormateadaVideo;
 };
 
