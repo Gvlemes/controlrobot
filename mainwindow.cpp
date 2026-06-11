@@ -306,10 +306,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     connect(btnAbajo, &QPushButton::pressed, this, [this]() { btnAbajo->setStyleSheet(ESTILO_BOTON_PRESIONADO); comandoActual = 'B'; relojRepetidorBluetooth->start(50); }); 
     connect(btnAbajo, &QPushButton::released, this, [this]() { btnAbajo->setStyleSheet(ESTILO_BOTON_NORMAL); detenerRobot(); }); 
     
-    connect(btnIzquierda, &QPushButton::pressed, this, [this]() { btnIzquierda->setStyleSheet(ESTILO_BOTON_PRESIONADO); comandoActual = 'L'; relojRepetidorBluetooth->start(50); }); 
+    connect(btnIzquierda, &QPushButton::pressed, this, [this]() { btnIzquierda->setStyleSheet(ESTILO_BOTON_PRESIONADO); comandoActual = 'R'; relojRepetidorBluetooth->start(50); }); 
     connect(btnIzquierda, &QPushButton::released, this, [this]() { btnIzquierda->setStyleSheet(ESTILO_BOTON_NORMAL); detenerRobot(); }); 
     
-    connect(btnDerecha, &QPushButton::pressed, this, [this]() { btnDerecha->setStyleSheet(ESTILO_BOTON_PRESIONADO); comandoActual = 'R'; relojRepetidorBluetooth->start(50); }); 
+    connect(btnDerecha, &QPushButton::pressed, this, [this]() { btnDerecha->setStyleSheet(ESTILO_BOTON_PRESIONADO); comandoActual = 'L'; relojRepetidorBluetooth->start(50); }); 
     connect(btnDerecha, &QPushButton::released, this, [this]() { btnDerecha->setStyleSheet(ESTILO_BOTON_NORMAL); detenerRobot(); }); 
 } 
 
